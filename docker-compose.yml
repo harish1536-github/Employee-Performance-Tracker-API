@@ -1,0 +1,72 @@
+# ============================================================
+# Docker Compose File
+# Starts PostgreSQL and Redis together
+#
+# HOW TO USE:
+# Step 1: Install Docker Desktop
+# Step 2: Run this command in project root folder:
+#         docker-compose up -d
+# Step 3: Run the Spring Boot app:
+#         mvn spring-boot:run
+#
+# TO STOP:
+#         docker-compose down
+#
+# TO STOP AND DELETE ALL DATA:
+#         docker-compose down -v
+# ============================================================
+
+version: '3.8'
+
+services:
+
+  # ============================================================
+  # PostgreSQL Database
+  # ============================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: performance_tracker_postgres
+    environment:
+      POSTGRES_DB: performancedb
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    ports:
+      # host:container
+      # Your app connects on localhost:5432
+      - "5433:5432"
+    volumes:
+      # Named volume persists data between restarts
+      # Data survives docker-compose down (but not down -v)
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Wait for PostgreSQL to be ready before app starts
+      test: ["CMD-SHELL", "pg_isready -U postgres -d performancedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Redis Cache
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: performance_tracker_redis
+    ports:
+      # Your app connects on localhost:6379
+      - "6379:6379"
+    volumes:
+      # Persist Redis data between restarts
+      - redis_data:/data
+    healthcheck:
+      # Wait for Redis to be ready
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+    # appendonly yes = persist data to disk
+
+# Named volumes
+volumes:
+  postgres_data:
+  redis_data:
