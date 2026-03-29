@@ -15,16 +15,6 @@ public class ResourceNotFoundException
         super(message);
     }
 
-    /*
-     * Static factory methods give clean error messages
-     *
-     * Instead of:
-     * throw new ResourceNotFoundException(
-     *     "Employee not found with id: " + id)
-     *
-     * We write:
-     * throw ResourceNotFoundException.employee(id)
-     */
     public static ResourceNotFoundException employee(Long id) {
         return new ResourceNotFoundException(
                 "Employee not found with id: " + id

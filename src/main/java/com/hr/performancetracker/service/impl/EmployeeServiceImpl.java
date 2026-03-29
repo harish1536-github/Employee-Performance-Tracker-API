@@ -3,7 +3,9 @@ package com.hr.performancetracker.service.impl;
 import com.hr.performancetracker.config.CacheConfig;
 import com.hr.performancetracker.dto.request.CreateEmployeeRequest;
 import com.hr.performancetracker.dto.response.EmployeeResponse;
+import com.hr.performancetracker.dto.response.ReviewResponse;
 import com.hr.performancetracker.entity.Employee;
+import com.hr.performancetracker.entity.PerformanceReview;
 import com.hr.performancetracker.exception.BusinessException;
 import com.hr.performancetracker.exception.ResourceNotFoundException;
 import com.hr.performancetracker.repository.EmployeeRepository;
@@ -17,20 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/*
- * @Service marks this as a Spring managed bean
- *
- * "implements EmployeeService" means:
- * This class MUST provide all methods defined in the interface
- * If any method is missing, code will not compile
- *
- * Spring sees:
- * - EmployeeService interface exists
- * - EmployeeServiceImpl implements it and has @Service
- * - When controller asks for EmployeeService, inject this class
- *
- * This is called Dependency Injection with interface abstraction
- */
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -104,14 +93,15 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .toList();
     }
 
-    /*
-     * Private helper method
-     * Converts Employee entity to EmployeeResponse DTO
-     * Private because it is an internal detail of this implementation
-     * The interface does not know about this method
-     * Other classes cannot call it
-     */
+
     private EmployeeResponse toResponse(Employee employee) {
+
+        Double averageRating = employee.getReviews()
+                .stream()
+                .mapToInt(PerformanceReview::getRating)
+                .average()
+                .orElse(0.0);
+
         return EmployeeResponse.builder()
                 .id(employee.getId())
                 .name(employee.getName())
@@ -119,6 +109,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .role(employee.getRole())
                 .joiningDate(employee.getJoiningDate())
                 .createdAt(employee.getCreatedAt())
+                .averageRating(averageRating)  // added
                 .build();
     }
+
+
 }

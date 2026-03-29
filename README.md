@@ -1,9 +1,30 @@
-# Performance Review System
+# Employee Performance Tracker API
+
+Spring Boot REST API for tracking employee performance reviews,
+goals and generating cycle based reports.
+
+---
 
 ## Table of Contents
+- [Tech Stack](#tech-stack)
 - [System Design](#system-design)
+- [API Endpoints](#api-endpoints)
 - [Assumptions](#assumptions)
 - [Getting Started](#getting-started)
+
+---
+
+## Tech Stack
+
+| Layer      | Technology              |
+|------------|-------------------------|
+| Language   | Java 17                 |
+| Framework  | Spring Boot 3.2.5       |
+| Database   | PostgreSQL 15 (Docker)  |
+| Cache      | Redis 7 (Docker)        |
+| Migrations | Flyway                  |
+| ORM        | Spring Data JPA         |
+| Container  | Docker + Docker Compose |
 
 ---
 
@@ -11,117 +32,79 @@
 
 ### Q1 — Scaling for 500 Concurrent Managers
 
-Since Spring Boot is stateless, multiple identical instances run behind a
-load balancer (AWS ALB/nginx). Five instances handling 500 users means 100
-requests per instance, which is manageable.
-
-HikariCP connection pooling (max 20 connections per instance) queues requests
-during spikes rather than failing immediately. PostgreSQL read replicas handle
-all GET traffic automatically via `@Transactional(readOnly=true)`, since report
-endpoints dominate peak load.
-
-For extremely heavy queries, async processing via `@Async` or message queues
-(RabbitMQ/SQS) lets managers receive results via email instead of waiting on
-slow HTTP responses.
-
----
+Since Spring Boot is stateless, multiple instances run behind a load balancer
+(AWS ALB/nginx). Five instances handling 500 users means 100 requests per
+instance. HikariCP connection pooling (max 20 per instance) queues requests
+during spikes. PostgreSQL read replicas handle all GET traffic via
+`@Transactional(readOnly=true)`. For heavy queries, `@Async` or message queues
+(RabbitMQ/SQS) lets managers receive results via email.
 
 ### Q2 — Fixing Slow Summary Endpoint at 100k+ Reviews
 
-The existing query already performs DB-level aggregation, not row-by-row Java
-processing. A composite index enables PostgreSQL index-only scans:
+A composite index enables PostgreSQL index-only scans:
 
 ```sql
 CREATE INDEX idx_pr_cycle_rating ON performance_reviews(cycle_id, rating);
 ```
 
-This reduces query time from ~500ms to ~5ms.
-
-For extreme scale, a materialized `cycle_summary` table updated hourly
-via `@Scheduled` reduces the endpoint to an O(1) lookup regardless of
-review volume:
-
-```sql
-CREATE TABLE cycle_summary (
-    cycle_id        BIGINT PRIMARY KEY,
-    average_rating  DECIMAL(3,2),
-    top_employee_id BIGINT,
-    completed_goals BIGINT,
-    missed_goals    BIGINT,
-    computed_at     TIMESTAMP
-);
-```
-
-Combined with caching, the endpoint becomes a pure memory lookup.
-
----
+This reduces query time from ~500ms to ~5ms. A materialized `cycle_summary`
+table updated via `@Scheduled` reduces the endpoint to an O(1) lookup.
+Combined with Redis caching, the endpoint becomes a pure memory lookup.
 
 ### Q3 — Caching Strategy
 
-Spring Cache abstraction with `@Cacheable` and `@CacheEvict` is used.
+Spring Cache with `@Cacheable` and `@CacheEvict` is used across endpoints.
 
-| Endpoint | Cache Key | TTL | Invalidation |
-|----------|-----------|-----|--------------|
-| GET /cycles/{id}/summary | `cycle:summary:{cycleId}` | 1 hour | On review submit |
-| GET /employees/{id}/reviews | `employee:reviews:{employeeId}` | 15 min | On review submit |
-| GET /employees?department=X&minRating=Y | `employees:dept:{dept}:rating:{rating}` | 5 min | On data change |
+| Endpoint | Cache Key | TTL |
+|----------|-----------|-----|
+| GET /cycles/{id}/summary | `cycle:summary:{cycleId}` | 1 hour |
+| GET /employees/{id}/reviews | `employee:reviews:{employeeId}` | 15 min |
+| GET /employees?department=X&minRating=Y | `employees:dept:{dept}:rating:{rating}` | 5 min |
 
-> POST endpoints are never cached.
+**Local** — `spring.cache.type=simple` (ConcurrentHashMap, no Redis needed)
 
-**Local profile** — uses ConcurrentHashMap, zero Redis setup needed:
-```properties
-spring.cache.type=simple
-```
+**Production** — `spring.cache.type=redis` with Redis running via Docker
 
-**Production profile** — uses Redis:
-```properties
-spring.cache.type=redis
-spring.data.redis.host=${REDIS_HOST}
-spring.data.redis.port=6379
-```
+---
 
-Service code remains identical across both profiles.
+## API Endpoints
+
+| Method | Endpoint                            | Description          |
+|--------|-------------------------------------|----------------------|
+| POST   | /employees                          | Create employee      |
+| GET    | /employees/{id}                     | Get employee by ID   |
+| GET    | /employees?department=X&minRating=Y | Filter employees     |
+| POST   | /reviews                            | Submit review        |
+| GET    | /employees/{id}/reviews             | Get employee reviews |
+| POST   | /cycles                             | Create cycle         |
+| GET    | /cycles/{id}/summary                | Get cycle summary    |
 
 ---
 
 ## Assumptions
 
-1. Employees can receive multiple reviews per cycle (manager, peer, skip-level).
-   No UNIQUE constraint on `(employee_id, cycle_id)`.
-
-2. PostgreSQL only — no H2. Enables production-realistic features like
-   read replicas, composite indexes, and connection pooling.
-
-3. Flyway owns all schema changes. Hibernate uses `ddl-auto=validate`
-   and never modifies the schema.
-
-4. Credentials injected via environment variables. Local profile uses
-   safe Docker Compose defaults.
-
-5. `reviewerNotes` is optional on review submission.
-
-6. Controllers depend on service interfaces only, never implementations,
-   keeping unit testing clean.
+1. Multiple reviews per employee per cycle are allowed
+2. Cycle names must be unique
+3. Joining date cannot be in the future
+4. Deleting an employee removes all their reviews and goals
+5. Top performer is employee with highest average rating in cycle
+6. PostgreSQL only — enables read replicas, composite indexes and connection pooling
+7. Flyway owns all schema changes — Hibernate uses `ddl-auto=validate`
+8. `reviewerNotes` is optional on review submission
+9. Controllers depend on service interfaces only, never implementations
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- Docker and Docker Compose
-- Java 17+
-- Maven
+- Java 17+, Maven, Docker Desktop
 
 ### Run Locally
 ```bash
-# Start PostgreSQL
+# Start PostgreSQL and Redis via Docker
 docker-compose up -d
 
 # Run the application
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-### Run Tests
-```bash
-./mvnw test
 ```

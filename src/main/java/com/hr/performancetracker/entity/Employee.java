@@ -9,16 +9,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/*
- * Serializable is required because this entity
- * gets stored in Redis cache
- * Without it Redis cannot serialize the object
- *
- * @NamedEntityGraph tells JPA:
- * When I ask for Employee.withReviews,
- * fetch reviews in the same query using JOIN
- * This prevents N+1 queries
- */
+
 @Entity
 @Table(
         name = "employees",
@@ -76,21 +67,7 @@ public class Employee implements Serializable {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    /*
-     * mappedBy = "employee" means the foreign key
-     * lives in PerformanceReview table not here
-     *
-     * FetchType.LAZY means do NOT load reviews
-     * when loading Employee
-     * Only load when explicitly accessed
-     *
-     * CascadeType.ALL means if Employee deleted
-     * all their reviews are deleted too
-     * Matches ON DELETE CASCADE in SQL
-     *
-     * orphanRemoval = true means if a review is
-     * removed from this list delete it from DB
-     */
+
     @OneToMany(
             mappedBy      = "employee",
             fetch         = FetchType.LAZY,
@@ -109,10 +86,7 @@ public class Employee implements Serializable {
     @Builder.Default
     private List<Goal> goals = new ArrayList<>();
 
-    /*
-     * @PrePersist runs before first save to database
-     * @PreUpdate runs before every update
-     */
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

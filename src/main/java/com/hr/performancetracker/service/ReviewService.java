@@ -5,11 +5,7 @@ import com.hr.performancetracker.dto.response.ReviewResponse;
 
 import java.util.List;
 
-/*
- * Review service contract
- * Controller depends on this interface
- * ReviewServiceImpl provides the actual implementation
- */
+
 public interface ReviewService {
 
     ReviewResponse submitReview(CreateReviewRequest request);

@@ -15,22 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/*
- * No class level @RequestMapping here
- *
- * WHY:
- * This controller has two different base paths:
- * POST /reviews                  no employee prefix
- * GET  /employees/{id}/reviews   under employees prefix
- *
- * If we put @RequestMapping("/reviews") the GET would not work
- * If we put @RequestMapping("/employees") the POST would not work
- *
- * Solution: no class level mapping
- * Each method defines its full path independently
- *
- * No Swagger annotations anywhere in this controller
- */
+
 @RestController
 @RequiredArgsConstructor
 public class ReviewController {
@@ -73,11 +58,6 @@ public class ReviewController {
      *
      * Returns 200 OK with list can be empty
      * Returns 404 if employee does not exist
-     *
-     * WHY /employees/{id}/reviews and not /reviews?employeeId=x:
-     * RESTful resource nesting
-     * Reads as reviews belonging to employee id
-     * Cleaner and more standard REST design
      */
     @GetMapping("/employees/{id}/reviews")
     public ResponseEntity<List<ReviewResponse>> getEmployeeReviews(

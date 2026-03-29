@@ -10,14 +10,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
-/*
- * What client sends in POST /employees request body
- *
- * Separate from Employee entity because:
- * Entity has id, createdAt, updatedAt client should not set
- * We validate here without polluting entity
- * API contract stays stable even if DB schema changes
- */
+
 @Getter
 @Setter
 @NoArgsConstructor

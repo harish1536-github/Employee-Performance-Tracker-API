@@ -18,12 +18,7 @@ import java.time.LocalDateTime;
                         name       = "idx_goals_employee_id",
                         columnList = "employee_id"
                 ),
-                /*
-                 * Composite index on cycle_id + status
-                 * Used by GET /cycles/{id}/summary
-                 * When counting goals by status for a cycle
-                 * PostgreSQL scans this index instead of full table
-                 */
+
                 @Index(
                         name       = "idx_goals_cycle_status",
                         columnList = "cycle_id, status"
@@ -37,15 +32,7 @@ import java.time.LocalDateTime;
 @Builder
 public class Goal implements Serializable {
 
-    /*
-     * GoalStatus defined inside Goal class
-     * It belongs to Goal so it lives here
-     *
-     * EnumType.STRING stores "PENDING" "COMPLETED" "MISSED"
-     * NOT 0, 1, 2 (EnumType.ORDINAL)
-     * ORDINAL breaks if you insert a new value in the middle
-     * STRING is always safe
-     */
+
     public enum GoalStatus {
         PENDING, COMPLETED, MISSED
     }

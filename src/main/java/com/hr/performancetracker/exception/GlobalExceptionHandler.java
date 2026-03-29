@@ -26,9 +26,6 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // --------------------------------------------------------
-    // 404 NOT FOUND
-    // --------------------------------------------------------
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(
             ResourceNotFoundException ex) {
@@ -41,9 +38,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    // --------------------------------------------------------
-    // 400 BAD REQUEST — business rule violations
-    // --------------------------------------------------------
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(
             BusinessException ex) {
@@ -84,9 +78,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    // --------------------------------------------------------
-    // 400 BAD REQUEST — missing required @RequestParam
-    // --------------------------------------------------------
+
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingParam(
             MissingServletRequestParameterException ex) {
@@ -100,9 +92,7 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    // --------------------------------------------------------
-    // 500 INTERNAL SERVER ERROR — unexpected errors
-    // --------------------------------------------------------
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(
             Exception ex) {
@@ -123,9 +113,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    // --------------------------------------------------------
-    // Consistent error response shape for ALL errors
-    // --------------------------------------------------------
     @Getter
     @Builder
     public static class ErrorResponse {
